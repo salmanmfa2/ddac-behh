@@ -34,14 +34,24 @@ try:
     st.write("---")
     
     # Tombol prediksi
-    if st.button("🚀 Hitung Estimasi Tingkat Kemiskinan"):
-        # Susun data untuk model
-        input_data = np.array([[tahun, pdrb, inflasi, jumlah_penerima, nilai_subsidi]])
+if st.button("🚀 Hitung Estimasi Tingkat Kemiskinan"):
+        # 1. Buat array kosong dengan 33 kolom (sesuai kebutuhan model)
+        # Kita isi dengan 0 sebagai nilai default untuk 28 variabel dummy/fitur tambahan
+        full_input = np.zeros((1, 33)) 
         
-        # Lakukan prediksi
-        prediction = model.predict(input_data)
+        # 2. Masukkan 5 data input kita ke kolom yang tepat
+        # Catatan: Jika urutannya salah, hasil prediksi akan meleset. 
+        # Jika hasil prediksi aneh, kita mungkin perlu menyesuaikan indeksnya.
+        full_input[0, 0] = tahun
+        full_input[0, 1] = pdrb
+        full_input[0, 2] = inflasi
+        full_input[0, 3] = jumlah_penerima
+        full_input[0, 4] = nilai_subsidi
         
-        # Tampilkan hasil
+        # 3. Lakukan prediksi
+        prediction = model.predict(full_input)
+        
+        # 4. Tampilkan hasil
         st.subheader("📈 Hasil Analisis Model")
         st.metric(label="Prediksi Tingkat Kemiskinan", value=f"{prediction[0]:.2f} %")
 
