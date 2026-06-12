@@ -1,22 +1,23 @@
 import streamlit as st
 import pandas as pd
-import pickle
+import joblib
 
-# Load model
-with open("pure_model.pkl", "rb") as file:
-    model = pickle.load(file)
+# --- Load model safely ---
+try:
+    model = joblib.load("pure_model.pkl")
+except Exception as e:
+    st.error(f"Failed to load model: {e}")
+    st.stop()
 
-# Sidebar navigation
+# --- Sidebar navigation ---
 st.sidebar.title("📊 Dashboard Navigation")
 page = st.sidebar.radio("Go to:", ["Prediction", "Batch Upload", "About"])
 
 # --- Prediction Page ---
 if page == "Prediction":
     st.title("📈 Tingkat Kemiskinan Predictor")
-
     st.markdown("Enter the economic indicators below to predict **Tingkat Kemiskinan**.")
 
-    # Input fields with realistic defaults
     col1, col2 = st.columns(2)
 
     with col1:
@@ -28,7 +29,7 @@ if page == "Prediction":
         jumlah_penerima = st.number_input("Jumlah Penerima", min_value=0, value=10000)
         nilai_subsidi = st.number_input("Nilai Subsidi", min_value=0.0, value=250000.0, format="%.2f")
 
-    # Ensure column order matches training
+    # --- Prepare input ---
     input_data = pd.DataFrame({
         "Tahun": [tahun],
         "PDRB": [pdrb],
@@ -37,10 +38,13 @@ if page == "Prediction":
         "NILAI_SUBSIDI": [nilai_subsidi]
     })
 
-
+    # --- Prediction ---
     if st.button("🔮 Predict"):
-        prediction = model.predict(input_data)[0]
-        st.metric(label="Predicted Tingkat Kemiskinan", value=f"{prediction:.2f}")
+        try:
+            prediction = model.predict(input_data)[0]
+            st.metric("Predicted Tingkat Kemiskinan", f"{prediction:.2f}")
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
 
 # --- Batch Upload Page ---
 elif page == "Batch Upload":
@@ -52,24 +56,27 @@ elif page == "Batch Upload":
         df = pd.read_csv(uploaded_file)
         st.write("Preview of uploaded data:", df.head())
 
-        predictions = model.predict(df)
-        df["Predicted Tingkat Kemiskinan"] = predictions
-        st.success("✅ Predictions completed!")
-        st.write(df)
+        try:
+            predictions = model.predict(df)
+            df["Predicted Tingkat Kemiskinan"] = predictions
+            st.success("✅ Predictions completed!")
+            st.write(df)
 
-        st.download_button(
-            label="📥 Download Results",
-            data=df.to_csv(index=False).encode("utf-8"),
-            file_name="predictions.csv",
-            mime="text/csv"
-        )
+            st.download_button(
+                label="📥 Download Results",
+                data=df.to_csv(index=False).encode("utf-8"),
+                file_name="predictions.csv",
+                mime="text/csv"
+            )
+        except Exception as e:
+            st.error(f"Batch prediction failed: {e}")
 
 # --- About Page ---
 else:
     st.title("ℹ️ About This App")
     st.markdown("""
     This dashboard predicts **Tingkat Kemiskinan** using a trained machine learning model.
-    
+
     **Features used:**
     - Tahun  
     - PDRB  
