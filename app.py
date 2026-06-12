@@ -1,14 +1,17 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import AdaBoostRegressor
-from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 # Set page layout
 st.set_page_config(page_title="Prediksi Tingkat Kemiskinan", layout="wide")
 
-st.title("Prediksi Tingkat Kemiskinan dengan AdaBoost")
-st.write("Aplikasi ini menggunakan model AdaBoost untuk memprediksi Tingkat Kemiskinan berdasarkan beberapa indikator.")
+st.title("Prediksi Tingkat Kemiskinan")
+st.write("Aplikasi ini memprediksi Tingkat Kemiskinan berdasarkan beberapa indikator menggunakan metode Machine Learning pilihan Anda.")
 
 # Load data
 @st.cache_data
@@ -26,12 +29,6 @@ except FileNotFoundError:
 target = 'Tingkat Kemiskinan'
 features = ['Tahun', 'PDRB', 'Inflasi', 'JUMLAH_PENERIMA', 'NILAI_SUBSIDI']
 
-# Check if target and features exist in dataset
-missing_cols = [col for col in features + [target] if col not in df.columns]
-if missing_cols:
-    st.error(f"Kolom berikut tidak ditemukan di dataset: {', '.join(missing_cols)}")
-    st.stop()
-
 # Preprocessing: Encode string categorical features to numeric
 encoders = {}
 X = df[features].copy()
@@ -39,51 +36,93 @@ y = df[target]
 
 for col in features:
     le = LabelEncoder()
-    # Convert to string to prevent errors with mixed data types
     X[col] = le.fit_transform(X[col].astype(str))
     encoders[col] = le
 
-# Train AdaBoost Model
-model = AdaBoostRegressor(n_estimators=50, random_state=42)
-model.fit(X, y)
+# Scaling data untuk Linear Regression dan Neural Network
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-# Sidebar for User Inputs
+# --- SIDEBAR: PEMILIHAN MODEL ---
+st.sidebar.header("Pengaturan Model")
+
+model_options = {
+    "AdaBoost 75,5%": "adaboost",
+    "Linear Regression 94,54% (Caution Overfitted Model)": "linear",
+    "Neural Network 66,43%": "nn"
+}
+
+selected_label = st.sidebar.radio(
+    "Pilih Metode Machine Learning:", 
+    list(model_options.keys())
+)
+selected_method = model_options[selected_label]
+
+# Training Model Berdasarkan Pilihan
+if selected_method == "adaboost":
+    model = AdaBoostRegressor(n_estimators=50, random_state=42)
+    model.fit(X, y)  # Tree-based tidak wajib di-scale
+elif selected_method == "linear":
+    model = LinearRegression()
+    model.fit(X_scaled, y) # Linear model butuh scaling
+else: # Neural Network
+    model = MLPRegressor(hidden_layer_sizes=(100,), max_iter=1000, random_state=42)
+    model.fit(X_scaled, y) # NN butuh scaling
+
+# --- SIDEBAR: INPUT PARAMETER ---
 st.sidebar.header("Input Parameter")
 user_input = {}
 
 for col in features:
-    # Get unique original string values for the selectbox
     unique_values = df[col].astype(str).unique().tolist()
     user_input[col] = st.sidebar.selectbox(f"Pilih {col}", unique_values)
 
-# Make Prediction
+# --- MAIN PART: PREDIKSI ---
 st.header("Hasil Prediksi")
 
 # Convert user input to dataframe
 input_df = pd.DataFrame([user_input])
 
-# Encode the user inputs using the fitted LabelEncoders
+# Encode the user inputs
 for col in features:
     input_df[col] = encoders[col].transform(input_df[col])
 
+# Jika model adalah Linear atau NN, kita harus men-scale inputnya juga
+if selected_method in ["linear", "nn"]:
+    input_ready = scaler.transform(input_df)
+else:
+    input_ready = input_df
+
 # Predict
-prediction = model.predict(input_df)[0]
-st.success(f"**Prediksi Tingkat Kemiskinan: {prediction:.2f}%**")
+prediction = model.predict(input_ready)[0]
+st.success(f"**Prediksi Tingkat Kemiskinan menggunakan {selected_label.split(' ')[0]}: {prediction:.2f}%**")
 
-# Feature Importance
+# --- MAIN PART: FEATURE IMPORTANCE ---
 st.header("Feature Importance (Pentingnya Fitur)")
-importances = model.feature_importances_
 
-fig, ax = plt.subplots(figsize=(8, 4))
-bars = ax.barh(features, importances, color='skyblue')
-ax.set_xlabel('Importance')
-ax.set_title('Feature Importance dari Model AdaBoost')
+if selected_method == "adaboost":
+    importances = model.feature_importances_
+    
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.barh(features, importances, color='skyblue')
+    ax.set_xlabel('Tingkat Kepentingan (Importance)')
+    ax.set_title('Feature Importance - AdaBoost')
+    ax.invert_yaxis()  
+    st.pyplot(fig)
 
-# Invert Y axis to show the highest importance at the top
-ax.invert_yaxis()  
+elif selected_method == "linear":
+    # Untuk regresi linier, kita menggunakan nilai absolut dari koefisien sebagai proxy importance
+    importances = np.abs(model.coef_)
+    
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.barh(features, importances, color='salmon')
+    ax.set_xlabel('Nilai Absolut Koefisien')
+    ax.set_title('Feature Importance (Koefisien) - Linear Regression')
+    ax.invert_yaxis()  
+    st.pyplot(fig)
 
-# Display plot in Streamlit
-st.pyplot(fig)
+else:
+    st.info("Grafik Feature Importance tidak ditampilkan karena algoritma Neural Network (Multilayer Perceptron) tidak memiliki ekstraksi bobot fitur langsung yang mudah diinterpretasikan seperti algoritma Tree-based atau Regresi Linear.")
 
 # Show raw data option
 if st.checkbox("Tampilkan Data Asli"):
