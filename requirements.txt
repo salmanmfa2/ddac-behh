@@ -1,3 +1,5 @@
+
 streamlit
 numpy
 Orange3
+PyQt5
