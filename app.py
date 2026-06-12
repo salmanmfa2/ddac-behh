@@ -25,19 +25,32 @@ except FileNotFoundError:
     st.error("File 'final_Data.csv' tidak ditemukan. Pastikan file berada di direktori yang sama dengan app.py.")
     st.stop()
 
-# Define features and target
+# Define target
 target = 'Tingkat Kemiskinan'
-features = ['Tahun', 'PDRB', 'Inflasi', 'JUMLAH_PENERIMA', 'NILAI_SUBSIDI']
 
-# Preprocessing: Encode string categorical features to numeric
-encoders = {}
-X = df[features].copy()
+# Pisahkan antara fitur numerik dan kategorikal
+categorical_feature = 'Kabupaten/Kota'
+numeric_features = ['Tahun', 'PDRB', 'Inflasi', 'JUMLAH_PENERIMA', 'NILAI_SUBSIDI']
+
+# Memastikan semua kolom yang dibutuhkan ada di dataset
+missing_cols = [col for col in [categorical_feature] + numeric_features + [target] if col not in df.columns]
+if missing_cols:
+    st.error(f"Kolom berikut tidak ditemukan di dataset: {', '.join(missing_cols)}")
+    st.stop()
+
+# Preprocessing: Pastikan fitur numerik bertipe float/int
+for col in numeric_features:
+    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+df[target] = pd.to_numeric(df[target], errors='coerce').fillna(0)
+
+# Preprocessing: Encode Kabupaten/Kota dari teks menjadi angka
+le_kab = LabelEncoder()
+df['Kabupaten_Encoded'] = le_kab.fit_transform(df[categorical_feature].astype(str))
+
+# Menyusun urutan fitur untuk model (X)
+model_features = ['Kabupaten_Encoded'] + numeric_features
+X = df[model_features].copy()
 y = df[target]
-
-for col in features:
-    le = LabelEncoder()
-    X[col] = le.fit_transform(X[col].astype(str))
-    encoders[col] = le
 
 # Scaling data untuk Linear Regression dan Neural Network
 scaler = StandardScaler()
@@ -71,23 +84,36 @@ else: # Neural Network
 
 # --- SIDEBAR: INPUT PARAMETER ---
 st.sidebar.header("Input Parameter")
-user_input = {}
 
-for col in features:
-    unique_values = df[col].astype(str).unique().tolist()
-    user_input[col] = st.sidebar.selectbox(f"Pilih {col}", unique_values)
+# Menyiapkan dictionary untuk menampung input pengguna agar sesuai urutan model_features
+user_input_raw = {}
+
+# 1. Input Kabupaten/Kota (Dropdown Text)
+kab_list = df[categorical_feature].unique().tolist()
+selected_kab = st.sidebar.selectbox("Pilih Kabupaten/Kota", kab_list)
+# Langsung encode nilai yang dipilih
+user_input_raw['Kabupaten_Encoded'] = le_kab.transform([selected_kab])[0]
+
+# 2. Input Numerik dengan Default Rasional
+default_tahun = 2024
+default_pdrb = float(df['PDRB'].mean())
+default_inflasi = 4.0
+default_penerima = float(df['JUMLAH_PENERIMA'].sum() * 0.8)
+default_subsidi = float(df['NILAI_SUBSIDI'].sum() * 0.8)
+
+user_input_raw['Tahun'] = st.sidebar.number_input("Tahun", value=default_tahun, step=1)
+user_input_raw['PDRB'] = st.sidebar.number_input("PDRB", value=default_pdrb)
+user_input_raw['Inflasi'] = st.sidebar.number_input("Inflasi (%)", value=default_inflasi)
+user_input_raw['JUMLAH_PENERIMA'] = st.sidebar.number_input("Jumlah Penerima", value=default_penerima)
+user_input_raw['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi", value=default_subsidi)
 
 # --- MAIN PART: PREDIKSI ---
 st.header("Hasil Prediksi")
 
-# Convert user input to dataframe
-input_df = pd.DataFrame([user_input])
+# Ubah dictionary ke DataFrame dengan urutan kolom yang sama seperti saat training
+input_df = pd.DataFrame([user_input_raw], columns=model_features)
 
-# Encode the user inputs
-for col in features:
-    input_df[col] = encoders[col].transform(input_df[col])
-
-# Jika model adalah Linear atau NN, kita harus men-scale inputnya juga
+# Jika model adalah Linear atau NN, kita harus men-scale inputnya menggunakan scaler
 if selected_method in ["linear", "nn"]:
     input_ready = scaler.transform(input_df)
 else:
@@ -100,22 +126,24 @@ st.success(f"**Prediksi Tingkat Kemiskinan menggunakan {selected_label.split(' '
 # --- MAIN PART: FEATURE IMPORTANCE ---
 st.header("Feature Importance (Pentingnya Fitur)")
 
+# Label untuk sumbu Y pada grafik (agar yang tampil adalah 'Kabupaten/Kota', bukan 'Kabupaten_Encoded')
+display_features = [categorical_feature] + numeric_features
+
 if selected_method == "adaboost":
     importances = model.feature_importances_
     
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.barh(features, importances, color='skyblue')
+    ax.barh(display_features, importances, color='skyblue')
     ax.set_xlabel('Tingkat Kepentingan (Importance)')
     ax.set_title('Feature Importance - AdaBoost')
     ax.invert_yaxis()  
     st.pyplot(fig)
 
 elif selected_method == "linear":
-    # Untuk regresi linier, kita menggunakan nilai absolut dari koefisien sebagai proxy importance
     importances = np.abs(model.coef_)
     
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.barh(features, importances, color='salmon')
+    ax.barh(display_features, importances, color='salmon')
     ax.set_xlabel('Nilai Absolut Koefisien')
     ax.set_title('Feature Importance (Koefisien) - Linear Regression')
     ax.invert_yaxis()  
@@ -126,4 +154,4 @@ else:
 
 # Show raw data option
 if st.checkbox("Tampilkan Data Asli"):
-    st.write(df[[target] + features].head(10))
+    st.write(df[[categorical_feature] + numeric_features + [target]].head(10))
