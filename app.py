@@ -16,8 +16,8 @@ st.write("Masukkan nilai indikator di bawah ini untuk melihat hasil estimasi mod
 # Fungsi untuk memuat model Orange secara aman dengan caching
 @st.cache_resource
 def load_predictive_model():
-    # File .pkcls dibaca langsung menggunakan modul pickle bawaan Python
-    with open("model.pkcls", "rb") as file:
+    # MEMUAT FILE MODEL ANDA: behh_army.pkcls
+    with open("behh_army.pkcls", "rb") as file:
         return pickle.load(file)
 
 try:
@@ -36,18 +36,15 @@ try:
     
     if st.button("🚀 Hitung Estimasi Tingkat Kemiskinan"):
         # Menyusun data input ke dalam format matriks/list 2D
-        # Catatan: Kolom 'TAHUN' hasil merge otomatis diabaikan sesuai instruksi Anda
         raw_values = [[tahun, pdrb, inflasi, jumlah_penerima, nilai_subsidi]]
         
         try:
-            # 'Magic' yang sesungguhnya: Membuat objek Orange Table menggunakan Domain asli dari model
-            # Ini memastikan data dipetakan ke kolom yang benar secara internal
+            # Membuat objek Orange Table menggunakan Domain asli dari model
             input_table = Orange.data.Table(model.domain, raw_values)
             
             # Melakukan prediksi
             prediction = model(input_table)
             
-            # Menampilkan hasil output ke dashboard
             st.subheader("📈 Hasil Analisis Model")
             
             # Ekstraksi nilai numerik dari output prediksi Orange
@@ -62,9 +59,9 @@ try:
             )
             
         except Exception as error:
-            st.error(f"Gagal memproses input ke dalam domain model. Pastikan struktur data sesuai. Detail: {error}")
+            st.error(f"Gagal memproses input. Pastikan urutan dan tipe data sesuai dengan model Anda. Detail: {error}")
 
 except FileNotFoundError:
-    st.error("File 'model.pkcls' tidak ditemukan di direktori aktif. Pastikan file model berada dalam satu folder dengan script 'app.py' ini.")
+    st.error("File 'behh_army.pkcls' tidak ditemukan. Pastikan file model tersebut sudah di-upload ke GitHub dan berada satu level dengan app.py.")
 except Exception as e:
     st.error(f"Terjadi kesalahan saat memuat dashboard: {e}")
