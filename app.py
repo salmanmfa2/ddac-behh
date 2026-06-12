@@ -16,17 +16,19 @@ if page == "Prediction":
 
     st.markdown("Enter the economic indicators below to predict **Tingkat Kemiskinan**.")
 
+    # Input fields with realistic defaults
     col1, col2 = st.columns(2)
 
     with col1:
-        tahun = st.number_input("Tahun", min_value=2000, max_value=2100, step=1)
-        pdrb = st.number_input("PDRB", min_value=0.0, format="%.2f")
+        tahun = st.number_input("Tahun", min_value=2000, max_value=2100, value=2024, step=1)
+        pdrb = st.number_input("PDRB", min_value=0.0, value=50000.0, format="%.2f")
 
     with col2:
-        inflasi = st.number_input("Inflasi (%)", min_value=0.0, format="%.2f")
-        jumlah_penerima = st.number_input("Jumlah Penerima", min_value=0)
-        nilai_subsidi = st.number_input("Nilai Subsidi", min_value=0.0, format="%.2f")
+        inflasi = st.number_input("Inflasi (%)", min_value=0.0, value=3.5, format="%.2f")
+        jumlah_penerima = st.number_input("Jumlah Penerima", min_value=0, value=10000)
+        nilai_subsidi = st.number_input("Nilai Subsidi", min_value=0.0, value=250000.0, format="%.2f")
 
+    # Ensure column order matches training
     input_data = pd.DataFrame({
         "Tahun": [tahun],
         "PDRB": [pdrb],
@@ -34,6 +36,7 @@ if page == "Prediction":
         "JUMLAH_PENERIMA": [jumlah_penerima],
         "NILAI_SUBSIDI": [nilai_subsidi]
     })
+
 
     if st.button("🔮 Predict"):
         prediction = model.predict(input_data)[0]
