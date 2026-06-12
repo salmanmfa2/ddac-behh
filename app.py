@@ -1,6 +1,5 @@
 import streamlit as st
 import pickle
-import Orange
 import numpy as np
 
 # Pengaturan halaman utama
@@ -13,19 +12,20 @@ st.set_page_config(
 st.title("📊 Dashboard Prediksi Tingkat Kemiskinan")
 st.write("Masukkan nilai indikator di bawah ini untuk melihat hasil estimasi model prediksi.")
 
-# Fungsi untuk memuat model Orange secara aman dengan caching
+# Fungsi untuk memuat model Scikit-Learn murni
 @st.cache_resource
-def load_predictive_model():
-    # MEMUAT FILE MODEL ANDA: behh_army.pkcls
-    with open("behh_army.pkcls", "rb") as file:
+def load_model():
+    # Menggunakan pure_model.pkl yang baru saja Anda buat
+    with open("pure_model.pkl", "rb") as file:
         return pickle.load(file)
 
 try:
-    model = load_predictive_model()
+    model = load_model()
     
     st.subheader("🔧 Parameter Indikator")
     
-    # Membuat komponen input untuk setiap fitur sesuai tipe datanya
+    # Membuat komponen input
+    # Pastikan urutan variabel di sini SAMA PERSIS dengan urutan kolom saat Anda melatih model di Orange
     tahun = st.number_input("Tahun", min_value=2010, max_value=2040, value=2026, step=1)
     pdrb = st.number_input("PDRB (Produk Domestik Regional Bruto)", min_value=0.0, value=50000000.0, step=100000.0)
     inflasi = st.slider("Inflasi (%)", min_value=-5.0, max_value=25.0, value=3.5, step=0.1)
@@ -35,33 +35,15 @@ try:
     st.write("---")
     
     if st.button("🚀 Hitung Estimasi Tingkat Kemiskinan"):
-        # Menyusun data input ke dalam format matriks/list 2D
-        raw_values = [[tahun, pdrb, inflasi, jumlah_penerima, nilai_subsidi]]
+        # Menyusun data input ke dalam format array 2D standar Scikit-Learn
+        input_data = np.array([[tahun, pdrb, inflasi, jumlah_penerima, nilai_subsidi]])
         
         try:
-            # Membuat objek Orange Table menggunakan Domain asli dari model
-            input_table = Orange.data.Table(model.domain, raw_values)
+            # Melakukan prediksi menggunakan model Scikit-Learn
+            prediction = model.predict(input_data)
             
-            # Melakukan prediksi
-            prediction = model(input_table)
-            
+            # Menampilkan hasil output ke dashboard
             st.subheader("📈 Hasil Analisis Model")
             
-            # Ekstraksi nilai numerik dari output prediksi Orange
-            if hasattr(prediction[0], '__iter__'):
-                predicted_value = prediction[0][0]
-            else:
-                predicted_value = prediction[0]
-                
-            st.metric(
-                label="Prediksi Tingkat Kemiskinan", 
-                value=f"{predicted_value:.2f} %"
-            )
-            
-        except Exception as error:
-            st.error(f"Gagal memproses input. Pastikan urutan dan tipe data sesuai dengan model Anda. Detail: {error}")
-
-except FileNotFoundError:
-    st.error("File 'behh_army.pkcls' tidak ditemukan. Pastikan file model tersebut sudah di-upload ke GitHub dan berada satu level dengan app.py.")
-except Exception as e:
-    st.error(f"Terjadi kesalahan saat memuat dashboard: {e}")
+            # Ekstraksi nilai
+            predicted_value = prediction[0]
