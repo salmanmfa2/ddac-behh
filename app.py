@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 
 # Set page layout
 st.set_page_config(page_title="Prediksi Tingkat Kemiskinan", layout="wide")
@@ -29,15 +29,15 @@ except FileNotFoundError:
 target = 'Tingkat Kemiskinan'
 features = ['Tahun', 'PDRB', 'Inflasi', 'JUMLAH_PENERIMA', 'NILAI_SUBSIDI']
 
-# Preprocessing: Encode string categorical features to numeric
-encoders = {}
+# Memastikan semua kolom fitur bertipe numerik. 
+# Jika ada sisa format teks/kategori dari dataset sebelumnya, akan dikonversi menjadi NaN lalu diisi 0 agar aplikasi tidak crash.
+for col in features:
+    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
+df[target] = pd.to_numeric(df[target], errors='coerce').fillna(0)
+
 X = df[features].copy()
 y = df[target]
-
-for col in features:
-    le = LabelEncoder()
-    X[col] = le.fit_transform(X[col].astype(str))
-    encoders[col] = le
 
 # Scaling data untuk Linear Regression dan Neural Network
 scaler = StandardScaler()
@@ -61,7 +61,7 @@ selected_method = model_options[selected_label]
 # Training Model Berdasarkan Pilihan
 if selected_method == "adaboost":
     model = AdaBoostRegressor(n_estimators=50, random_state=42)
-    model.fit(X, y)  # Tree-based tidak wajib di-scale
+    model.fit(X, y) # Tree-based menggunakan data asli
 elif selected_method == "linear":
     model = LinearRegression()
     model.fit(X_scaled, y) # Linear model butuh scaling
@@ -69,13 +69,23 @@ else: # Neural Network
     model = MLPRegressor(hidden_layer_sizes=(100,), max_iter=1000, random_state=42)
     model.fit(X_scaled, y) # NN butuh scaling
 
-# --- SIDEBAR: INPUT PARAMETER ---
+# --- SIDEBAR: INPUT PARAMETER DENGAN PRE-INPUT RASIONAL ---
 st.sidebar.header("Input Parameter")
+
+# Menghitung default values sesuai permintaan
+default_tahun = 2024
+default_pdrb = float(df['PDRB'].mean())
+default_inflasi = 4.0
+default_penerima = float(df['JUMLAH_PENERIMA'].sum() * 0.8)
+default_subsidi = float(df['NILAI_SUBSIDI'].sum() * 0.8)
+
 user_input = {}
 
-for col in features:
-    unique_values = df[col].astype(str).unique().tolist()
-    user_input[col] = st.sidebar.selectbox(f"Pilih {col}", unique_values)
+user_input['Tahun'] = st.sidebar.number_input("Tahun", value=default_tahun, step=1)
+user_input['PDRB'] = st.sidebar.number_input("PDRB", value=default_pdrb)
+user_input['Inflasi'] = st.sidebar.number_input("Inflasi (%)", value=default_inflasi)
+user_input['JUMLAH_PENERIMA'] = st.sidebar.number_input("Jumlah Penerima", value=default_penerima)
+user_input['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi", value=default_subsidi)
 
 # --- MAIN PART: PREDIKSI ---
 st.header("Hasil Prediksi")
@@ -83,11 +93,7 @@ st.header("Hasil Prediksi")
 # Convert user input to dataframe
 input_df = pd.DataFrame([user_input])
 
-# Encode the user inputs
-for col in features:
-    input_df[col] = encoders[col].transform(input_df[col])
-
-# Jika model adalah Linear atau NN, kita harus men-scale inputnya juga
+# Jika model adalah Linear atau NN, kita men-scale inputnya menggunakan scaler yang sudah di-fit dengan data latih
 if selected_method in ["linear", "nn"]:
     input_ready = scaler.transform(input_df)
 else:
@@ -98,7 +104,7 @@ prediction = model.predict(input_ready)[0]
 st.success(f"**Prediksi Tingkat Kemiskinan menggunakan {selected_label.split(' ')[0]}: {prediction:.2f}%**")
 
 # --- MAIN PART: FEATURE IMPORTANCE ---
-st.header("Feature Importance (Pentingnya Fitur)")
+st.header("Feature Importance")
 
 if selected_method == "adaboost":
     importances = model.feature_importances_
@@ -111,7 +117,6 @@ if selected_method == "adaboost":
     st.pyplot(fig)
 
 elif selected_method == "linear":
-    # Untuk regresi linier, kita menggunakan nilai absolut dari koefisien sebagai proxy importance
     importances = np.abs(model.coef_)
     
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -122,7 +127,7 @@ elif selected_method == "linear":
     st.pyplot(fig)
 
 else:
-    st.info("Grafik Feature Importance tidak ditampilkan karena algoritma Neural Network (Multilayer Perceptron) tidak memiliki ekstraksi bobot fitur langsung yang mudah diinterpretasikan seperti algoritma Tree-based atau Regresi Linear.")
+    st.info("Grafik Feature Importance tidak ditampilkan karena algoritma Neural Network tidak menghasilkan bobot fitur yang dapat divisualisasikan secara langsung seperti algoritma Tree-based atau Regresi Linear.")
 
 # Show raw data option
 if st.checkbox("Tampilkan Data Asli"):
