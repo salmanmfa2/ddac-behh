@@ -38,10 +38,22 @@ if missing_cols:
     st.error(f"Kolom berikut tidak ditemukan di dataset: {', '.join(missing_cols)}")
     st.stop()
 
-# Preprocessing: Pastikan fitur numerik bertipe float/int
+# Preprocessing: Pastikan fitur numerik bertipe float/int dan bersihkan format string (koma ribuan)
 for col in numeric_features:
-    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-df[target] = pd.to_numeric(df[target], errors='coerce').fillna(0)
+    # Hilangkan koma jika angka disimpan sebagai teks "1,000,000"
+    clean_str = df[col].astype(str).str.replace(',', '', regex=False).str.strip()
+    df[col] = pd.to_numeric(clean_str, errors='coerce')
+
+# Peringatan jika fitur numerik semuanya gagal dikonversi (misal: isinya masih teks rentang '< -0.61')
+if df['PDRB'].isna().all() or df['NILAI_SUBSIDI'].isna().all():
+    st.warning("⚠️ **PERINGATAN**: Data numerik gagal dibaca. Aplikasi mendeteksi isian berupa teks (kemungkinan dataset belum diganti dengan angka asli). Perhitungan Average/Median akan bernilai 0.")
+
+# Isi nilai yang kosong (NaN) dengan 0
+for col in numeric_features:
+    df[col] = df[col].fillna(0)
+
+# Target juga dibersihkan
+df[target] = pd.to_numeric(df[target].astype(str).str.replace(',', '', regex=False).str.strip(), errors='coerce').fillna(0)
 
 # Mengubah skala NILAI_SUBSIDI menjadi Triliun agar nilainya tidak terlalu besar
 df['NILAI_SUBSIDI'] = df['NILAI_SUBSIDI'] / 1_000_000_000_000
@@ -104,11 +116,11 @@ default_inflasi = 3.0
 default_penerima = float(df['JUMLAH_PENERIMA'].mean())
 default_subsidi = float(df['NILAI_SUBSIDI'].mean())
 
-user_input_raw['Tahun'] = st.sidebar.number_input("Tahun", value=default_tahun, step=1)
-user_input_raw['PDRB'] = st.sidebar.number_input("PDRB (Triliun)", value=default_pdrb)
-user_input_raw['Inflasi'] = st.sidebar.number_input("Inflasi (%)", value=default_inflasi)
-user_input_raw['JUMLAH_PENERIMA'] = st.sidebar.number_input("Jumlah Penerima", value=default_penerima)
-user_input_raw['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi (Triliun)", value=default_subsidi)
+user_input_raw['Tahun'] = st.sidebar.number_input("Tahun", value=int(default_tahun), step=1)
+user_input_raw['PDRB'] = st.sidebar.number_input("PDRB (Triliun)", value=default_pdrb, format="%.2f")
+user_input_raw['Inflasi'] = st.sidebar.number_input("Inflasi (%)", value=default_inflasi, format="%.2f")
+user_input_raw['JUMLAH_PENERIMA'] = st.sidebar.number_input("Jumlah Penerima", value=default_penerima, format="%.2f")
+user_input_raw['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi (Triliun)", value=default_subsidi, format="%.2f")
 
 # --- MAIN PART: PREDIKSI ---
 st.header("Hasil Prediksi")
