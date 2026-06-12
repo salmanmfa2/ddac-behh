@@ -43,6 +43,9 @@ for col in numeric_features:
     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 df[target] = pd.to_numeric(df[target], errors='coerce').fillna(0)
 
+# Mengubah skala NILAI_SUBSIDI menjadi Triliun agar nilainya tidak terlalu besar
+df['NILAI_SUBSIDI'] = df['NILAI_SUBSIDI'] / 1_000_000_000_000
+
 # Preprocessing: Encode Kabupaten/Kota dari teks menjadi angka
 le_kab = LabelEncoder()
 df['Kabupaten_Encoded'] = le_kab.fit_transform(df[categorical_feature].astype(str))
@@ -102,10 +105,10 @@ default_penerima = float(df['JUMLAH_PENERIMA'].sum() * 0.8)
 default_subsidi = float(df['NILAI_SUBSIDI'].sum() * 0.8)
 
 user_input_raw['Tahun'] = st.sidebar.number_input("Tahun", value=default_tahun, step=1)
-user_input_raw['PDRB'] = st.sidebar.number_input("PDRB", value=default_pdrb)
+user_input_raw['PDRB'] = st.sidebar.number_input("PDRB (Triliun)", value=default_pdrb)
 user_input_raw['Inflasi'] = st.sidebar.number_input("Inflasi (%)", value=default_inflasi)
 user_input_raw['JUMLAH_PENERIMA'] = st.sidebar.number_input("Jumlah Penerima", value=default_penerima)
-user_input_raw['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi", value=default_subsidi)
+user_input_raw['NILAI_SUBSIDI'] = st.sidebar.number_input("Nilai Subsidi (Triliun)", value=default_subsidi)
 
 # --- MAIN PART: PREDIKSI ---
 st.header("Hasil Prediksi")
