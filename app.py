@@ -76,8 +76,8 @@ st.sidebar.header("Input Parameter")
 default_tahun = 2024
 default_pdrb = float(df['PDRB'].mean())
 default_inflasi = 4.0
-default_penerima = float(df['JUMLAH_PENERIMA'].sum() * 0.8)
-default_subsidi = float(df['NILAI_SUBSIDI'].sum() * 0.8)
+default_penerima = float(df['JUMLAH_PENERIMA'].mean() * 0.8)
+default_subsidi = float(df['NILAI_SUBSIDI'].mean() * 0.8)
 
 user_input = {}
 
