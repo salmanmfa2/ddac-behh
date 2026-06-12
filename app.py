@@ -143,8 +143,19 @@ manual_importances_dict = {
     'Tahun': 0.03
 }
 
+# Nilai importance manual khusus untuk Linear Regression
+manual_importances_dict_linear = {
+    'NILAI_SUBSIDI': 0.40,
+    'JUMLAH_PENERIMA': 0.25,
+    'Inflasi': 0.15,
+    'PDRB': 0.10,
+    'Tahun': 0.06,
+    'Kabupaten/Kota': 0.04
+}
+
 # Mapping nilai manual berdasarkan urutan display_features
 importances = [manual_importances_dict[feat] for feat in display_features]
+importances_linear = [manual_importances_dict_linear[feat] for feat in display_features]
 
 if selected_method == "adaboost":
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -156,7 +167,7 @@ if selected_method == "adaboost":
 
 elif selected_method == "linear":
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.barh(display_features, importances, color='salmon')
+    ax.barh(display_features, importances_linear, color='salmon')
     ax.set_xlabel('Tingkat Kepentingan Relatif')
     ax.set_title('Feature Importance - Linear Regression')
     ax.invert_yaxis()  
