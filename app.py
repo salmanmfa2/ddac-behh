@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-import joblib
+import pickle
 
 # --- Load model safely ---
 try:
-    model = joblib.load("pure_model.pkl")
+    with open("pure_model.pkl", "rb") as file:
+        model = pickle.load(file)
 except Exception as e:
     st.error(f"Failed to load model: {e}")
     st.stop()
