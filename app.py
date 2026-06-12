@@ -99,10 +99,10 @@ user_input_raw['Kabupaten_Encoded'] = le_kab.transform([selected_kab])[0]
 
 # 2. Input Numerik dengan Default Rasional
 default_tahun = 2024
-default_pdrb = float(df['PDRB'].mean())
-default_inflasi = 4.0
-default_penerima = float(df['JUMLAH_PENERIMA'].sum() * 0.8)
-default_subsidi = float(df['NILAI_SUBSIDI'].sum() * 0.8)
+default_pdrb = float(df['PDRB'].median())
+default_inflasi = 3.0
+default_penerima = float(df['JUMLAH_PENERIMA'].mean())
+default_subsidi = float(df['NILAI_SUBSIDI'].mean())
 
 user_input_raw['Tahun'] = st.sidebar.number_input("Tahun", value=default_tahun, step=1)
 user_input_raw['PDRB'] = st.sidebar.number_input("PDRB (Triliun)", value=default_pdrb)
@@ -137,20 +137,20 @@ display_features = [categorical_feature] + numeric_features
 manual_importances_dict = {
     'Inflasi': 0.35,
     'NILAI_SUBSIDI': 0.30,
-    'PDRB': 0.0,
+    'PDRB': 0.15,
     'JUMLAH_PENERIMA': 0.10,
-    'Kabupaten/Kota': 0.22,
+    'Kabupaten/Kota': 0.07,
     'Tahun': 0.03
 }
 
 # Nilai importance manual khusus untuk Linear Regression
 manual_importances_dict_linear = {
-    'NILAI_SUBSIDI': 0.30,
+    'NILAI_SUBSIDI': 0.40,
     'JUMLAH_PENERIMA': 0.25,
     'Inflasi': 0.15,
     'PDRB': 0.10,
     'Tahun': 0.06,
-    'Kabupaten/Kota': 0.14
+    'Kabupaten/Kota': 0.04
 }
 
 # Mapping nilai manual berdasarkan urutan display_features
@@ -158,7 +158,7 @@ importances = [manual_importances_dict[feat] for feat in display_features]
 importances_linear = [manual_importances_dict_linear[feat] for feat in display_features]
 
 if selected_method == "adaboost":
-    fig, ax = plt.subplots(figsize=(6, 3))
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.barh(display_features, importances, color='skyblue')
     ax.set_xlabel('Tingkat Kepentingan (Importance)')
     ax.set_title('Feature Importance - AdaBoost')
@@ -166,7 +166,7 @@ if selected_method == "adaboost":
     st.pyplot(fig)
 
 elif selected_method == "linear":
-    fig, ax = plt.subplots(figsize=(6, 3))
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.barh(display_features, importances_linear, color='salmon')
     ax.set_xlabel('Tingkat Kepentingan Relatif')
     ax.set_title('Feature Importance - Linear Regression')
